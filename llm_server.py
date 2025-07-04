@@ -1,11 +1,11 @@
 import asyncio
 import json
 import logging
+import os
 from typing import Dict, List, Optional, Any, AsyncGenerator
 from datetime import datetime
 import uuid
 import re
-from urllib.parse import quote_plus
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field
 import httpx
 import ollama
 from contextlib import asynccontextmanager
-from bs4 import BeautifulSoup
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -77,24 +76,6 @@ class MCPServer:
 
     def _register_default_tools(self):
         """Register default MCP tools - schemas only, execution handled by Django"""
-
-        # Web search tool
-        self.register_tool(
-            name="web_search",
-            description="Search the web for information using DuckDuckGo",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "Search query"},
-                    "max_results": {
-                        "type": "integer",
-                        "description": "Maximum number of results (default: 5)",
-                        "default": 5,
-                    },
-                },
-                "required": ["query"],
-            },
-        )
 
         # Calculator tool
         self.register_tool(
@@ -288,7 +269,9 @@ class OllamaLLMServer:
     """Main LLM Server class with Ollama integration"""
 
     def __init__(self):
-        self.ollama_client = ollama.AsyncClient()
+        # Use environment variable for Ollama host, default to localhost
+        ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        self.ollama_client = ollama.AsyncClient(host=ollama_host)
         self.mcp_server = MCPServer()
         self.available_models = []
 
@@ -775,6 +758,8 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
 
+    port = int(os.getenv("PORT", 8001))
+
     uvicorn.run(
-        "llm_server:app", host="0.0.0.0", port=8001, reload=True, log_level="info"
+        "llm_server:app", host="0.0.0.0", port=port, reload=True, log_level="info"
     )
