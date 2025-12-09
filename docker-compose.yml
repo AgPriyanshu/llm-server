@@ -1,0 +1,58 @@
+# docker-compose.yml for FastAPI + Postgres + Qdrant (vector DB)
+# Place a Dockerfile for your FastAPI app in the same folder and an optional .env file for secrets.
+
+version: "3.8"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file: .env
+    network_mode: "host"
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+    # depends_on:
+      # db:
+      #   condition: service_healthy
+      # qdrant:
+      #   condition: service_healthy
+
+  # db:
+  #   image: postgres:15-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: postgres
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -q"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+    # healthcheck:
+    #   # Qdrant exposes a simple HTTP health endpoint. If your image/version differs, adjust this check.
+    #   test: ["CMD-SHELL", "curl -f http://localhost:6333/health || exit 1"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 6
+
+# Notes:
+# - Put your FastAPI app Dockerfile in the same directory. The app should read DATABASE_URL and QDRANT_URL from env.
+# - Use an .env file (gitignored) for real credentials rather than hardcoding values above.
+# - If you prefer a different vector DB, replace the qdrant service with the respective image and adjust ports/healthcheck.
