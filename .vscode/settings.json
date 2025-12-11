@@ -1,7 +1,32 @@
 {
+  // --- Ruff Integration ---
   "ruff.enable": true,
+  "ruff.lint.enable": true,
+  "ruff.format.enable": true,
+  "ruff.organizeImports": true, // Ruff handles import sorting
+
+  // --- Editor Formatting ---
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
     "source.organizeImports": "always"
-  }
+  },
+
+  // --- Python Auto-Imports & IntelliSense ---
+  "python.analysis.autoImportCompletions": true,          // enables import suggestions
+  "python.analysis.indexing": true,                        // speeds up import discovery
+  "python.analysis.useLibraryCodeForTypes": true,          // better type-based suggestions
+  "python.analysis.completeFunctionParens": true,          // auto-close parentheses
+
+  // Improve overall code intelligence
+  "python.analysis.packageIndexDepths": [
+    { "name": "src", "depth": 10 },                       // if project uses src/ layout
+    { "name": ".", "depth": 5 }                           // otherwise general project root
+  ],
+
+  // Speed improvements
+  "python.analysis.memory.keepLibraryAst": true,
+  "python.analysis.openFilesOnly": false,
+
+  // --- REPL ---
+  "python.REPL.enableREPLSmartSend": false
 }

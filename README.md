@@ -1,6 +1,5 @@
 **TODO
-- Create docker compose for this project
-- Add postgres db for chats
-- Add vector db for embeddits
-- Create websocket for chat
+- Create docker compose for this project - Done
+- Add vector db for embeddings
+- Create websocket for chat - Done
 - Enable model streaming
