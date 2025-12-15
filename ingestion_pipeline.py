@@ -29,7 +29,7 @@ class DataIngestionPipeline:
         all_splits = text_splitter.split_documents(docs)
 
         vector_size = len(self.embeddings_model.embed_query("sample text"))
-        client = vector_db.get_client()
+        client = vector_db.client
 
         if not client.collection_exists("test"):
             client.create_collection(

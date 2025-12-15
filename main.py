@@ -111,13 +111,6 @@ async def websocket_endpoint(websocket: WebSocket):
             HumanMessage(content=data),
         ]
 
-        # response = agent.invoke({"messages": messages})
-        # messages = response["messages"]
-        async for chunk in agent.astream(
-            {"messages": messages}, stream_mode="messages"
-        ):
-            # print(chunk)
-            # import pdb
-
-            # pdb.set_trace()
-            await websocket.send_text(f"{chunk[0].content}")
+        response = agent.invoke({"messages": messages})
+        messages = response["messages"]
+        await websocket.send_text(messages[-1].text)
