@@ -1,5 +1,4 @@
-# docker-compose.yml for FastAPI + Postgres + Qdrant (vector DB)
-# Place a Dockerfile for your FastAPI app in the same folder and an optional .env file for secrets.
+# docker-compose.yml for LLM Server + vLLM + Qdrant
 
 version: "3.8"
 
@@ -11,15 +10,20 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
-    env_file: .env
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=all=value
-    network_mode: "host"
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000",'--reload']
+    env_file:
+      - .env
+    command:
+      [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+      ]
     volumes:
       - ./:/app
-      - ./requirements.txt:/app/requirements.txt
     deploy:
       resources:
         reservations:
@@ -27,29 +31,50 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-
     # depends_on:
-      # db:
-      #   condition: service_healthy
-      # qdrant:
-      #   condition: service_healthy
+    # vllm:
+    #   condition: service_healthy
+    # qdrant:
+    #   condition: service_healthy
 
-  # db:
-  #   image: postgres:15-alpine
-  #   restart: unless-stopped
-  #   environment:
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: postgres
-  #     POSTGRES_DB: postgres
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -q"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
+  vllm:
+    image: vllm/vllm-openai:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN:-}
+      # WSL2 compatibility - disable v1 engine which has Triton compilation issues
+      - VLLM_USE_V1=0
+    volumes:
+      - ./data/models:/root/.cache/huggingface
+    command: [
+        "--model",
+        "Qwen/Qwen2.5-1.5B-Instruct",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8080",
+        "--max-model-len",
+        "8192",
+        "--gpu-memory-utilization",
+        "0.9",
+        # WSL2 compatibility - disable CUDA graphs and torch compile
+        "--enforce-eager",
+      ]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # healthcheck:
+    #   test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 10
+    #   start_period: 120s
 
   qdrant:
     image: qdrant/qdrant:latest
@@ -58,14 +83,14 @@ services:
       - "6333:6333"
     volumes:
       - ./data/qdrant:/qdrant/storage
-    # healthcheck:
-    #   # Qdrant exposes a simple HTTP health endpoint. If your image/version differs, adjust this check.
-    #   test: ["CMD-SHELL", "curl -f http://localhost:6333/health || exit 1"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 6
-
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:6333/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
 # Notes:
-# - Put your FastAPI app Dockerfile in the same directory. The app should read DATABASE_URL and QDRANT_URL from env.
-# - Use an .env file (gitignored) for real credentials rather than hardcoding values above.
-# - If you prefer a different vector DB, replace the qdrant service with the respective image and adjust ports/healthcheck.
+# - Set HF_TOKEN environment variable if using gated models
+# - Models are cached in ./data/models for persistence
+# - vLLM health check has long start_period (120s) for model loading
+# - For production, remove --reload flag from web service
+# - Run with: docker-compose up -d

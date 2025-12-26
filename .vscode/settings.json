@@ -28,5 +28,7 @@
   "python.analysis.openFilesOnly": false,
 
   // --- REPL ---
-  "python.REPL.enableREPLSmartSend": false
+  "python.REPL.enableREPLSmartSend": false,
+  "cursorpyright.analysis.autoImportCompletions": true,
+  "cursorpyright.analysis.useLibraryCodeForTypes": true
 }
