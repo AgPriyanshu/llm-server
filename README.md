@@ -109,13 +109,16 @@ The LLM Server is built with a modular architecture that separates concerns and 
 
 2. Start the server:
    ```bash
-   # Method 1: Direct execution
+   # Method 1: Direct execution (from llm_server directory)
+   cd llm_server
    python main.py
    
-   # Method 2: Using uvicorn
+   # Method 2: Using uvicorn (from llm_server directory)
+   cd llm_server
    uvicorn main:app --host 0.0.0.0 --port 8001 --reload
    
    # Method 3: As a package (from parent directory)
+   cd ..
    python -m llm_server
    ```
 
@@ -406,15 +409,19 @@ llm_server/
 
 ### Development vs Production
 
-**Development:**
+**Development:** (run from llm_server directory)
 ```bash
+cd llm_server
 python main.py  # Auto-reload enabled
 ```
 
-**Production:**
+**Production:** (run from llm_server directory)
 ```bash
+cd llm_server
 uvicorn main:app --host 0.0.0.0 --port 8001 --workers 4
 ```
+
+**Note:** The import structure is optimized for running directly from the `llm_server` directory. If you need to run as a package, use `python -m llm_server` from the parent directory.
 
 ## Benefits of the Modular Architecture
 
