@@ -15,16 +15,25 @@ from qdrant_client.models import Distance, VectorParams
 from app.core import logger, settings
 from app.services.vector_db import vector_db
 
+# Cache directory for HuggingFace models
+MODEL_CACHE_DIR = Path(settings.model_cache_dir)
+
 
 class DataIngestionPipeline:
     """Pipeline for ingesting documents into the vector database."""
 
     def __init__(self, document_path: str):
         self.document_path = Path(document_path)
-        # Local HuggingFace embeddings - no external server needed
+
+        # Ensure cache directory exists
+        MODEL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+        # Local HuggingFace embeddings with persistent cache
+        logger.info(f"Loading embedding model (cache: {MODEL_CACHE_DIR})")
         self.embeddings_model = HuggingFaceEmbeddings(
             model_name=settings.embedding_model,
-            model_kwargs={"device": "cuda"},
+            cache_folder=str(MODEL_CACHE_DIR),
+            model_kwargs={"device": settings.embedding_device},
             encode_kwargs={"normalize_embeddings": True},
         )
 
@@ -75,11 +84,10 @@ if __name__ == "__main__":
         "--document",
         "-d",
         type=str,
-        default="./documents/how_mining_works.pdf",
+        default="../documents/how_mining_works.pdf",
         help="Path to the document to ingest",
     )
     args = parser.parse_args()
 
     pipeline = DataIngestionPipeline(document_path=args.document)
     pipeline.run()
-

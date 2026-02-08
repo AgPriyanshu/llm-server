@@ -1,6 +1,7 @@
 """Vector database service using Qdrant."""
 
 import threading
+from pathlib import Path
 from typing import Any, Optional
 
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -8,6 +9,9 @@ from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 
 from app.core import logger, settings
+
+# Model cache directory - persists downloaded models
+MODEL_CACHE_DIR = Path(settings.model_cache_dir)
 
 
 class SingletonMeta(type):
@@ -52,9 +56,14 @@ class VectorDB(metaclass=SingletonMeta):
                 settings.qdrant_collection
             ):
                 try:
+                    # Ensure cache directory exists
+                    MODEL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+                    logger.info(f"Loading embedding model (cache: {MODEL_CACHE_DIR})")
+
                     embedding = HuggingFaceEmbeddings(
                         model_name=settings.embedding_model,
-                        model_kwargs={"device": "cuda"},
+                        cache_folder=str(MODEL_CACHE_DIR),
+                        model_kwargs={"device": settings.embedding_device},
                         encode_kwargs={"normalize_embeddings": True},
                     )
                     self._vector_store = QdrantVectorStore(

@@ -27,10 +27,13 @@ class Settings(BaseSettings):
 
     # Embedding model (HuggingFace model name)
     embedding_model: str = "BAAI/bge-m3"
+    embedding_device: str = "cuda"  # "cuda" or "cpu"
+    model_cache_dir: str = (
+        "./data/models"  # Relative path works both locally and in Docker
+    )
 
     # CORS
     cors_origins: list[str] = ["*"]
 
 
 settings = Settings()
-
