@@ -2,6 +2,8 @@
 
 import threading
 from typing import Any, List, Optional
+from pathlib import Path
+from typing import Any, Optional
 
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -37,6 +39,9 @@ def _rrf_merge(
         for pid in sorted(scores, key=lambda x: scores[x], reverse=True)
     ]
     return merged
+
+# Model cache directory - persists downloaded models
+MODEL_CACHE_DIR = Path(settings.model_cache_dir)
 
 
 class SingletonMeta(type):
@@ -80,8 +85,28 @@ class VectorDB(metaclass=SingletonMeta):
             with self._init_lock:
                 if self._text_embedding is None:
                     self._text_embedding = HuggingFaceEmbeddings(
+
+        with self._init_lock:
+            if self._client is None:
+                try:
+                    self._client = QdrantClient(url=settings.qdrant_url)
+                    logger.info(f"Connected to Qdrant at {settings.qdrant_url}")
+                except Exception as exc:
+                    logger.error(f"Failed to connect to Qdrant: {exc}")
+                    raise
+
+            if self._vector_store is None and self._client.collection_exists(
+                settings.qdrant_collection
+            ):
+                try:
+                    # Ensure cache directory exists
+                    MODEL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+                    logger.info(f"Loading embedding model (cache: {MODEL_CACHE_DIR})")
+
+                    embedding = HuggingFaceEmbeddings(
                         model_name=settings.embedding_model,
-                        model_kwargs={"device": "cuda"},
+                        cache_folder=str(MODEL_CACHE_DIR),
+                        model_kwargs={"device": settings.embedding_device},
                         encode_kwargs={"normalize_embeddings": True},
                     )
 

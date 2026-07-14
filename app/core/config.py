@@ -39,6 +39,10 @@ class Settings(BaseSettings):
 
     # Embedding model (HuggingFace model name)
     embedding_model: str = "BAAI/bge-m3"
+    embedding_device: str = "cuda"  # "cuda" or "cpu"
+    model_cache_dir: str = (
+        "./data/models"  # Relative path works both locally and in Docker
+    )
 
     # Image embedding model for multimodal retrieval (e.g. SigLIP)
     image_embedding_model: str = "google/siglip-base-patch16-224"
@@ -67,4 +71,3 @@ def ensure_model_cache_env() -> None:
 
 # Set cache env at import so server and any script importing app use the same cache
 ensure_model_cache_env()
-

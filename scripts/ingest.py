@@ -66,7 +66,9 @@ def _page_no_from_element(element) -> int | None:
     return int(pno) if pno is not None else None
 
 
-def _load_pdf_docling(document_path: Path, extract_images: bool = True) -> list[LangChainDocument]:
+def _load_pdf_docling(
+    document_path: Path, extract_images: bool = True
+) -> list[LangChainDocument]:
     """Load PDF with Docling: text, tables, and optionally pictures as LangChain-style Documents."""
     pipeline_options = PdfPipelineOptions()
     pipeline_options.generate_picture_images = extract_images
@@ -88,7 +90,11 @@ def _load_pdf_docling(document_path: Path, extract_images: bool = True) -> list[
                 import pandas as pd
 
                 df = element.export_to_dataframe(doc=doc)
-                table_text = df.to_markdown() if hasattr(df, "to_markdown") else df.to_csv(index=False)
+                table_text = (
+                    df.to_markdown()
+                    if hasattr(df, "to_markdown")
+                    else df.to_csv(index=False)
+                )
             except Exception as e:
                 logger.warning("Docling table export failed: %s", e)
                 table_text = "[Table content not extracted]"
@@ -213,6 +219,10 @@ def _split_text_and_image_chunks(chunks):
     return text_chunks, image_chunks
 
 
+# Cache directory for HuggingFace models
+MODEL_CACHE_DIR = Path(settings.model_cache_dir)
+
+
 class DataIngestionPipeline:
     """Pipeline for ingesting documents into the vector database (Docling for PDF)."""
 
@@ -226,7 +236,8 @@ class DataIngestionPipeline:
             )
         self.embeddings_model = HuggingFaceEmbeddings(
             model_name=settings.embedding_model,
-            model_kwargs={"device": "cuda"},
+            cache_folder=str(MODEL_CACHE_DIR),
+            model_kwargs={"device": settings.embedding_device},
             encode_kwargs={"normalize_embeddings": True},
         )
 
@@ -311,7 +322,9 @@ class DataIngestionPipeline:
         finally:
             conn.close()
 
-        def _row(doc, content_type: str, page_content: str, text_emb=None, image_emb=None):
+        def _row(
+            doc, content_type: str, page_content: str, text_emb=None, image_emb=None
+        ):
             m = doc.metadata or {}
             return (
                 uuid.uuid4(),
@@ -332,7 +345,9 @@ class DataIngestionPipeline:
             )
             for doc, emb in zip(text_chunks, text_embeddings):
                 ct = "table" if _get_category(doc) in TABLE_LIKE_CATEGORIES else "text"
-                rows.append(_row(doc, ct, doc.page_content or "", text_emb=emb, image_emb=None))
+                rows.append(
+                    _row(doc, ct, doc.page_content or "", text_emb=emb, image_emb=None)
+                )
 
         # Image chunks: embed with SigLIP (no image_base64 stored)
         for doc in image_chunks:
@@ -385,7 +400,9 @@ class DataIngestionPipeline:
                         """
                     )
                 conn.commit()
-                logger.info("Upserted %s rows to pgvector table %s", len(rows), table_name)
+                logger.info(
+                    "Upserted %s rows to pgvector table %s", len(rows), table_name
+                )
             finally:
                 conn.close()
 
@@ -400,7 +417,7 @@ if __name__ == "__main__":
         "--document",
         "-d",
         type=str,
-        default="./documents/how_mining_works.pdf",
+        default="../documents/how_mining_works.pdf",
         help="Path to the document to ingest",
     )
     parser.add_argument(
@@ -415,4 +432,3 @@ if __name__ == "__main__":
         use_docling=not args.no_docling,
     )
     pipeline.run()
-
