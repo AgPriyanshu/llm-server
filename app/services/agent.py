@@ -7,13 +7,27 @@ from app.services.vector_db import vector_db
 from app.tools import get_weather
 
 
+def _format_doc_for_prompt(doc) -> str:
+    """Format a retrieved doc for the LLM; image chunks become [Figure on page N: ...]."""
+    meta = getattr(doc, "metadata", None) or {}
+    content_type = meta.get("content_type", "text")
+    page_content = doc.page_content or ""
+    if content_type == "image":
+        page_num = meta.get("page_number")
+        caption = page_content.strip() if page_content else "see document"
+        if page_num is not None:
+            return f"[Figure on page {page_num}: {caption}]"
+        return f"[Figure: {caption}]"
+    return page_content
+
+
 @dynamic_prompt
 def prompt_with_context(request: ModelRequest) -> str:
-    """Inject RAG context into the system prompt."""
+    """Inject RAG context into the system prompt (text, tables, and image refs)."""
     last_query = request.state["messages"][-1].text
-    retrieved_docs = vector_db.vector_store.similarity_search(last_query)
+    retrieved_docs = vector_db.similarity_search(last_query)
 
-    docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
+    docs_content = "\n\n".join(_format_doc_for_prompt(doc) for doc in retrieved_docs)
 
     system_message = (
         "You are a helpful assistant. Use the following context in your response:"
